@@ -33,7 +33,7 @@ def display_intraday_data(ticker_symbol, lookback, time, intraday_start_time, in
     print(f'\nThe average intraday range from {intraday_start_time}-{intraday_end_time} range of {ticker_symbol} from the past {time}{lookback} is: {avg_intraday_range:.2f}')
     for day in days_of_week:
         if day in avg_intraday_range_by_day.index:
-            print(f'The average intraday range from {intraday_start_time}-{intraday_end_time} for {day} is {avg_intraday_range_by_day[day]:.2f}')
+            print(f"The average intraday range from {intraday_start_time}-{intraday_end_time} for {day}s in the past {time}{lookback} is: {avg_intraday_range_by_day[day]:.2f}")
 
     print(f'\n{intraday_start_time}-{intraday_end_time} makes up {avg_intraday_range / avg_dr  * 100:.2f}% of the daily range on average over the past {time}{lookback}')
     for day in days_of_week:
@@ -45,7 +45,6 @@ def display_intraday_data(ticker_symbol, lookback, time, intraday_start_time, in
 
 # TODO: display charts
 def display_daily_chart():
-    pass
     days_axis = DAYS_OF_WEEK
     dr_axis = None
 

@@ -21,17 +21,15 @@ import display_data
  - Would like to display in print statements what they specifically selected ie lookaback, ticker, etc.
  - Maybe let users select multiple asset classes to evaluate data, to see how correlating or opposite asset classes data compare. Use threading for this?
 """
-# TODO: today's date isn't included in the data. so if lookback period is 5 days it's 5 days from today, yes, but not including today in output or calculations.
 
 # TODO: when you enter an invalid date for intraday data e.g. after hours for microsoft it will prompt the user to create a new one, but then once you do after running calculations there's an error. 
-
 def seasonal_tendencies():
     pass
 
 def main():
     intraday_choice, ticker_input, time_input, lookback_input = user_input.get_user_input()
     data, start_date, end_date = get_data.get_daily_data(ticker_input, time_input, lookback_input)
-    # data = calculations.filter_trading_days(data, start_date, end_date)
+    data = calculations.filter_trading_days(data, start_date, end_date)
 
     # Initialize None variables
     intraday_data = intraday_start_time = intraday_end_time = avg_intraday_range = avg_intraday_range_by_day = None
@@ -41,12 +39,11 @@ def main():
         intraday_data = get_data.get_intraday_data(ticker_input, start_date, end_date, intraday_start_time, intraday_end_time)
         # TODO: perhaps change the return variable of this to "filtered_data" to keep the raw data 
         if intraday_data is None: # get_data.get_intraday_data() offers the user the opportunity to make intraday_data to None
-            intraday_data = calculations.filter_trading_days(intraday_data, start_date, end_date)
             intraday_data = intraday_start_time = intraday_end_time = avg_intraday_range = avg_intraday_range_by_day = None
-
-        # Calculations for intraday data
-        avg_intraday_range = calculations.intraday_calculations(intraday_data)
-        avg_intraday_range_by_day = calculations.calculate_avg_intraday_range_by_day(intraday_data)
+        else:
+            intraday_data = calculations.filter_trading_days(intraday_data, start_date, end_date)
+            intraday_data, avg_intraday_range = calculations.intraday_calculations(intraday_data)
+            avg_intraday_range_by_day = calculations.calculate_avg_intraday_range_by_day(intraday_data, data)
 
     avg_daily_range = calculations.calculate_avg_dr(data)
     avg_dr_by_day = calculations.calculate_avg_dr_by_day(data)
@@ -56,4 +53,5 @@ def main():
     
 if  __name__ == '__main__':
     main()
+    # TODO: date index is 7/1/24, however start index is 6/30 this could be because of my code where the end date is yesterday isntead of today which could lead to my tz error.
     
