@@ -9,7 +9,7 @@ import tkinter
 
 def  get_user_input():
     while True:
-        ticker_input = input('What ticker symbol would you like to grab data from? (e.g. if I would like Microsoft I would enter "MSFT") ')
+        ticker_input = input('What ticker symbol would you like to grab data from? (e.g. if I would like Microsoft I would enter "MSFT") ').upper()
         try:
             ticker = yf.Ticker(ticker_input)
             data = ticker.history(period = '1d')

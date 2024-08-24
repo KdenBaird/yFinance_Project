@@ -37,14 +37,14 @@ def get_daily_data(ticker_symbol, time, lookback):
     if end_date.tzinfo is None:
         end_date = end_date.tz_localize('America/New_York')
     #Download the historical data for the given date range
-    data = yf.download(ticker_symbol, start=start_date, end=end_date)
-    data = data.drop(columns=['Adj Close'])
+    daily_data = yf.download(ticker_symbol, start=start_date, end=end_date)
+    daily_data = daily_data.drop(columns=['Adj Close'])
 
-    if data.index.tzinfo is None:
-        data.index = data.index.tz_localize('America/New_York')
+    if daily_data.index.tzinfo is None:
+        daily_data.index = daily_data.index.tz_localize('America/New_York')
     else:
-        data.index = data.index.tz_convert('America/New_York') 
-    return data, start_date, end_date 
+        daily_data.index = daily_data.index.tz_convert('America/New_York') 
+    return daily_data, start_date, end_date 
 
 
 # TODO: getting an assertion error saying times don't match up when i run this. YOOO CHECK IF BOTH THE INTRADAY TIMEZONES AND DAILY RANGE TIME ZONES ARE THE SAME, THIS COULD CAUSE DISCREPANCY W DATA???
@@ -85,5 +85,41 @@ def get_intraday_data(ticker_symbol, start_date, end_date, start_time, end_time)
         else: 
             print('Exiting intraday data retrieval...')
             intraday_data = None
-
     return intraday_data
+
+def find_intraday_hod_lod_times(intraday_data):
+    # CHAT GPT made this function for me 
+    # Create an empty list to store results
+    results = []
+
+    # Group data by day
+    # CB make sure you understand this: the groupby() function in pandas creates a DataFrameGroupBy object, which is essentially a collection of groups where each group is associated with a particular key (in this case, a date). 
+    grouped = intraday_data.groupby(intraday_data.index.date)
+    print('This is what grouped looks like: ')
+    print(grouped)
+
+    # Think of the next block of code as this, for key, value in dict Of the date, we're finding the time in which the value or group's column made the high, and low, and the actual high and low price
+    for date, group in grouped:
+        # Find the time of the highest and lowest price of the day
+        time_of_high = group['High'].idxmax().time() # returns the index (which is a Datetime object) where the 'High' column reaches its maximum value for that day. .time extracts the time of datetime object
+        time_of_low = group['Low'].idxmin().time()
+
+        high_at_time_of_high = group.loc[time_of_high, 'High']
+        low_at_time_of_low = group.loc[time_of_low, 'Low']
+
+        # Append the results (adding dictionaries which basically become rows when converting results to pandas df)
+        results.append({
+            'Date': date,
+            'Time_of_High': time_of_high,
+            'High_at_Time_of_High': high_at_time_of_high,
+            'Time_of_Low': time_of_low,
+            'Low_at_Time_of_Low': low_at_time_of_low 
+
+        })
+
+    # Convert the results to a DataFrame
+    intraday_hod_lod_df = pd.DataFrame(results)
+    print('This si what intraday_hod_lod_df looks like: ')
+    print(intraday_hod_lod_df)
+
+    return intraday_hod_lod_df

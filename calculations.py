@@ -45,7 +45,7 @@ def calculate_avg_dr(data):
     daily_ranges = pd.Series([high - low for high, low in zip(data['High'], data['Low'])])
 
     avg_dr = round(daily_ranges.mean(), 2)
-    return avg_dr
+    return avg_dr, daily_ranges
 
 def calculate_avg_dr_by_day(data):
     data.loc[:, 'Daily_Range'] = data['High'] - data['Low']
@@ -53,26 +53,24 @@ def calculate_avg_dr_by_day(data):
 
     dr_by_day = data.groupby('Day_of_Week')['Daily_Range']
     avg_dr_by_day = round(dr_by_day.mean(), 2)
-    return avg_dr_by_day
+    return avg_dr_by_day, dr_by_day
 
-def intraday_calculations(intraday_data):
+def calculate_avg_intraday_range(intraday_data):
      # Need to exclude today's data from both datasets to ensure intraday data and data use same dates
     intraday_data = intraday_data[intraday_data.index.date < pd.Timestamp.today().date()].copy()
 
     # loc[] syAllows u to acces and modify rows and columns using their labels. similar to iloc which is index location
     # The code below basically means all rows, within the intraday_range column will be set to the data highs and lows
-    intraday_data.loc[:, 'Intraday_Range'] = intraday_data['High'] - intraday_data['Low']
-    intraday_data.loc[:, 'Day_of_Week'] = intraday_data.index.day_name()
+    # intraday_data.loc[:, 'Intraday_Range'] = intraday_data['High'] - intraday_data['Low']
+    # intraday_data.loc[:, 'Day_of_Week'] = intraday_data.index.day_name()
 
     # Group by the date and calculate the AM range become more comfy w lambda
-    # The intraday_ranges value is correct after using this lambda function. 
     intraday_ranges = intraday_data.groupby(intraday_data.index.date).apply(
     lambda x: round(x['High'].max() - x['Low'].min(), 2)
     )
 
-    # This value is also correct. 
     avg_intraday_range = intraday_ranges.mean()
-    return intraday_data, avg_intraday_range
+    return intraday_data, avg_intraday_range, intraday_ranges
 
 def calculate_avg_intraday_range_by_day(intraday_data, data):
     intraday_ranges_df = data.copy()
@@ -82,7 +80,30 @@ def calculate_avg_intraday_range_by_day(intraday_data, data):
     lambda x: round(x['High'].max() - x['Low'].min(), 2)
     )
    
+   # CHAT GPT did this line make sure you understand what reindex does
     intraday_ranges_df['Intraday_Range'] = intraday_ranges.reindex(intraday_ranges_df.index.date).values
    
-    avg_intraday_range_by_day = intraday_ranges_df.groupby('Day_of_Week')['Intraday_Range'].mean()
-    return avg_intraday_range_by_day
+    intraday_range_by_day = intraday_ranges_df.groupby('Day_of_Week')['Intraday_Range']
+    avg_intraday_range_by_day = intraday_range_by_day.mean()
+    return avg_intraday_range_by_day, intraday_range_by_day
+
+def calculate_median_dr(daily_ranges):
+
+    median_dr = round(daily_ranges.median(), 2)
+    print(f'This is the median dr: {median_dr}')
+    return median_dr
+
+def calculate_median_dr_by_day(dr_by_day):
+    median_dr_by_day = round(dr_by_day.median(), 2)
+    print(f'Here is the median dr by day : {median_dr_by_day}')
+    return median_dr_by_day
+
+def calculate_median_intraday_range(intraday_ranges):
+    median_intraday_range = round(intraday_ranges.median(), 2)
+    print(f'This si the median intraday range: {median_intraday_range}')
+    return median_intraday_range
+
+def calculate_median_intraday_range_by_day(intraday_range_by_day):
+   median_intraday_range_by_day = round(intraday_range_by_day.median(), 2)
+   print(f'This si the median intraday range by day: {median_intraday_range_by_day}')
+   return median_intraday_range_by_day
