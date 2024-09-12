@@ -16,7 +16,7 @@ class Graphs:
         bars = plt.bar(self.days_axis, data_axis, color='#4682B4', edgecolor='black')
         plt.grid(axis='y', linestyle='--', alpha=0.7)
 
-        # Add text on top of the bars with professional styling
+        # Add text on top of the bars with good style
         for bar in bars:
             height = bar.get_height()
             plt.text(bar.get_x() + bar.get_width() / 2, height + 0.05,
@@ -30,7 +30,7 @@ class Graphs:
         plt.show()
 
     def create_comparison_data_bar_chart(self, data1, data2, title, bar_label1, bar_label2):
-        bar_width = 0.35  # Width of the bars
+        bar_width = 0.35  
         x = np.arange(len(self.days_axis))  # Label locations
 
         plt.figure(figsize=(12, 7))
@@ -117,7 +117,7 @@ class Graphs:
     def display_avg_idr_and_median_idr(self, avg_idr_by_day, median_idr_by_day):
         avg_idr_values = [avg_idr_by_day.get(day, 0) for day in self.days_axis]
         median_idr_values = [median_idr_by_day.get(day, 0) for day in self.days_axis]
-        title = f'Average Intraday Range vs Median Intrday Range by Day of Week \n of {self.ticker_symbol} from {self.intraday_start_time} - {self.intraday_end_time} Past ({self.lookback}{self.time})'
+        title = f'Average Intraday Range vs Median Intrday Range of \n {self.ticker_symbol} from {self.intraday_start_time} - {self.intraday_end_time} Past ({self.lookback}{self.time})'
         bar_label1 = 'Average Intraday Range'
         bar_label2 = 'Meidan Intraday Range'
         

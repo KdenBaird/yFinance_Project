@@ -107,3 +107,53 @@ def calculate_median_intraday_range_by_day(intraday_range_by_day):
    median_intraday_range_by_day = round(intraday_range_by_day.median(), 2)
    print(f'This si the median intraday range by day: {median_intraday_range_by_day}')
    return median_intraday_range_by_day
+
+def calculate_median_bearish_reversal_time(data):
+    # GPT did this for me, make sure you understand all if it and can do it yourself before moving on. 
+     # Convert Time_of_High and Time_of_Low to datetime
+    data['Time_of_High'] = pd.to_datetime(data['Time_of_High'], format='%H:%M:%S').dt.time
+    data['Time_of_Low'] = pd.to_datetime(data['Time_of_Low'], format='%H:%M:%S').dt.time
+
+    # Define bearish days as those where Time_of_Low is after Time_of_High
+    bearish_days = data[data['Opening_Price'] > data['Closing_Price']]
+
+    # Calculate the average time of the high on bearish days
+    if not bearish_days.empty:
+        # Convert time to seconds since midnight
+        time_in_seconds = bearish_days['Time_of_High'].apply(lambda t: t.hour * 3600 + t.minute * 60 + t.second)
+        
+        # Calculate the average time in seconds
+        median_seconds = time_in_seconds.median()
+        
+        # Convert average seconds back to time
+        median_time_of_high = pd.to_datetime(median_seconds, unit='s').time()
+        print(f"\n The MEDIAN time of the high on bearish days is: {median_time_of_high}")
+        return median_time_of_high
+    else:
+        print("No bearish days found in the given data.")
+        return None
+def calculate_median_bullish_reversal_time(data):
+    # CHAT GPT ran this function for me, make sure i understand and can do pit myself before moving on.
+     # Convert Time_of_High and Time_of_Low to datetime
+    data['Time_of_High'] = pd.to_datetime(data['Time_of_High'], format='%H:%M:%S').dt.time
+    data['Time_of_Low'] = pd.to_datetime(data['Time_of_Low'], format='%H:%M:%S').dt.time
+
+    # Define bullish days as those where Time_of_High is after Time_of_Low
+    bullish_days = data[data['Closing_Price'] > data['Opening_Price']]
+
+    # Calculate the average time of the low on bullish days
+    if not bullish_days.empty:
+        # Convert time to seconds since midnight
+        time_in_seconds = bullish_days['Time_of_Low'].apply(lambda t: t.hour * 3600 + t.minute * 60 + t.second)
+        
+        # Calculate the average time in seconds
+        median_seconds = time_in_seconds.median()
+        
+        # Convert average seconds back to time
+        median_time_of_low = pd.to_datetime(median_seconds, unit='s').time()
+        
+        print(f"The MEDIAN time of the low on bullish days is: {median_time_of_low}")
+        return median_time_of_low
+    else:
+        print("No bullish days found in the given data.")
+        return None

@@ -43,21 +43,11 @@ def display_charts(avg_dr_by_day, time, lookback, ticker_symbol, avg_daily_range
     graphs.display_median_dr_and_median_idr(median_dr_by_day, median_idr_by_day)
     graphs.display_avg_dr_and_median_dr(avg_dr_by_day, median_dr_by_day)
     graphs.display_avg_idr_and_median_idr(avg_idr_by_day, median_idr_by_day)
-    
-    #  display_daily_avg_ranges_chart(avg_dr_by_day, time, lookback, ticker_symbol) 
-    #  display_daily_median_chart(median_dr_by_day, time, lookback, ticker_symbol) 
-    #  display_intraday_avg_ranges_chart(avg_intraday_range_by_day, intraday_start_time, intraday_end_time, ticker_symbol, lookback, time) 
-    #  display_intraday_median_chart(intraday_start_time, intraday_end_time, ticker_symbol, time, lookback, median_intraday_range_by_day) 
-    # display_avg_dr_and_avg_idr_chart(avg_dr_by_day, avg_intraday_range_by_day) 
-    # display_daily_and_intraday_median_chart(intraday_start_time, intraday_end_time, ticker_symbol, time, lookback, median_dr_by_day, median_intraday_range_by_day)
-    # display_avg_dr_and_median_dr(avg_dr_by_day, median_dr_by_day, time, lookback, ticker_symbol)
-    #display_avg_idr_and_median_idr(avg_intraday_range_by_day, median_intraday_range_by_day, time, lookback, ticker_symbol, intraday_start_time, intraday_end_time)
 
 def display_daily_data(ticker_symbol, lookback, time, avg_dr, avg_dr_by_day):
-    days_of_week = DAYS_OF_WEEK
-
+    
     print(f'\nThe average daily range of {ticker_symbol} from the past {time}{lookback} is: {avg_dr:.2f}')
-    for day in days_of_week:
+    for day in DAYS_OF_WEEK:
         # TODO: if user only selefcts a lookback period of a couple days, an error will come, because not all days of week is being selected. need to fix. 
         if day in avg_dr_by_day.index:
             print(f'The average daily range for {day} is {avg_dr_by_day[day]:.2f}')
@@ -65,14 +55,14 @@ def display_daily_data(ticker_symbol, lookback, time, avg_dr, avg_dr_by_day):
             print(f'No data available for {day} in selected lookback period. ')
 
 def display_intraday_data(ticker_symbol, lookback, time, intraday_start_time, intraday_end_time, avg_intraday_range, avg_dr, avg_dr_by_day, avg_intraday_range_by_day):
-    days_of_week = DAYS_OF_WEEK
+    
     print(f'\nThe average intraday range from {intraday_start_time}-{intraday_end_time} range of {ticker_symbol} from the past {time}{lookback} is: {avg_intraday_range:.2f}')
-    for day in days_of_week:
+    for day in DAYS_OF_WEEK:
         if day in avg_intraday_range_by_day.index:
             print(f"The average intraday range from {intraday_start_time}-{intraday_end_time} for {day}s in the past {time}{lookback} is: {avg_intraday_range_by_day[day]:.2f}")
 
     print(f'\n{intraday_start_time}-{intraday_end_time} makes up {avg_intraday_range / avg_dr  * 100:.2f}% of the daily range on average over the past {time}{lookback}')
-    for day in days_of_week:
+    for day in DAYS_OF_WEEK:
         if day in avg_dr_by_day.index and day in avg_intraday_range_by_day.index:
             intraday_percentage = avg_intraday_range_by_day[day] / avg_dr_by_day[day] * 100
             print(f"{day.upper()}: {intraday_start_time}-{intraday_end_time} makes up {intraday_percentage:.2f}% of {day}'s range over the past {time}{lookback}")
@@ -81,9 +71,9 @@ def display_intraday_data(ticker_symbol, lookback, time, intraday_start_time, in
 
 
 def display_daily_median_data(ticker_symbol, time, lookback, median_dr, median_dr_by_day):
-    days_of_week = DAYS_OF_WEEK
+    
     print(f'\nThe median daily range of {ticker_symbol} from the past {lookback}{time} is: {median_dr:.2f}')
-    for day in days_of_week:
+    for day in DAYS_OF_WEEK:
         # TODO: if user only selefcts a lookback period of a couple days, an error will come, because not all days of week is being selected. need to fix. 
         if day in median_dr_by_day.index:
             print(f'The median daily range for {day} is {median_dr_by_day[day]:.2f}')
@@ -91,8 +81,7 @@ def display_daily_median_data(ticker_symbol, time, lookback, median_dr, median_d
             print(f'No data available for {day} in selected lookback period. ')
 
 def display_intraday_median_data(ticker_symbol, time, lookback, intraday_start_time, intraday_end_time, median_dr, median_dr_by_day, median_intraday_range, median_intraday_range_by_day):
-    days_of_week = DAYS_OF_WEEK
     print(f'\nThe median intraday range from {intraday_start_time}-{intraday_end_time} range of {ticker_symbol} from the past {lookback}{time} is: {median_intraday_range:.2f}')
-    for day in days_of_week:
+    for day in DAYS_OF_WEEK:
         if day in median_intraday_range_by_day.index:
             print(f"The median intraday range from {intraday_start_time}-{intraday_end_time} for {day}s in the past {lookback}{time} is: {median_intraday_range_by_day[day]:.2f}")

@@ -1,0 +1,222 @@
+def next(self):
+        current_time = self.data.index[-1].time()  # Get the time of the current candle
+        current_close = self.data.Close[-1]  # Current candle close price
+        current_datetime = self.data.index[-1] # TODO: Review this and ensure it doesn't need to be current_datetime = self.data.index[-1]
+        
+        # Define TP and SL 
+        long_tp_price = current_close + 40.00
+        long_sl_price = current_close - 20.00
+
+        short_tp_price = current_close - 40.00
+        short_sl_price = current_close + 20.00
+         
+        # Define the trading window (9:50 AM to 11:10 AM)
+        start_time = pd.Timestamp("09:50:00").time()
+        end_time = pd.Timestamp("11:10:00").time()
+
+        # Perform invalidation checks on all candles, regardless of the trading window
+        # print(f"Current Close: {current_close}")
+        # print(f"Bearish FVGs before filtering: {self.bearish_fvgs}")
+        # print(f"Bullish FVGs before filtering: {self.bullish_fvgs}")
+
+        # Perform invalidation checks on all candles, regardless of the trading window
+        self.bullish_fvgs = [
+            fvg for fvg in self.bullish_fvgs
+            if current_close >= fvg['First Candle High'] and fvg['Datetime'].date() == current_datetime.date()  # Keep only valid bullish FVGs
+        ]
+
+        self.bearish_fvgs = [
+            fvg for fvg in self.bearish_fvgs
+            if current_close <= fvg['First Candle Low'] and fvg['Datetime'].date() == current_datetime.date()  # Keep only valid bearish FVGs
+        ]
+
+        # print(f"Bearish FVGs after filtering: {self.bearish_fvgs}")
+        # print(f"Bullish FVGs after filtering: {self.bullish_fvgs}")
+
+        # Ensure we're within the allowed trading window before placing trades
+        if start_time <= current_time <= end_time:
+    # Evaluate if position is flat
+            if not self.position:
+                print('POSITION IS FLAT, checking for signals')
+
+                # Place trades only within the trading window
+                for fvg in self.bearish_fvgs[:]:
+                    if current_close > fvg['First Candle Low']:
+                        self.buy(sl=long_sl_price, tp=long_tp_price)  # Buy at the next open
+                        print(f"Buy signal placed at {self.data.index[-1]} for FVG: {fvg}")
+                        self.bearish_fvgs.remove(fvg)  # Remove the FVG after using it
+                        break  # Buy once, no need to check further
+
+                for fvg in self.bullish_fvgs[:]:
+                    if current_close < fvg['First Candle High']:
+                        self.sell(sl=short_sl_price, tp=short_tp_price)  # Sell at the next open
+                        print(f"Sell signal placed at {self.data.index[-1]} for FVG: {fvg}")
+                        self.bullish_fvgs.remove(fvg)  # Remove the FVG after using it
+                        break # Sell once, no need to check further
+
+
+
+
+
+
+# PART 2
+
+def next(self):
+        current_time = self.data.index[-1].time()  # Get the time of the current candle
+        current_close = self.data.Close[-1]  # Current candle close price
+        current_datetime = self.data.index[-1]  # Current datetime
+        
+        # Define TP and SL 
+        long_tp_price = current_close + 40.00
+        long_sl_price = current_close - 20.00
+
+        short_tp_price = current_close - 40.00
+        short_sl_price = current_close + 20.00
+        
+        # Define the trading window (9:50 AM to 11:10 AM)
+        start_time = pd.Timestamp("09:50:00").time()
+        end_time = pd.Timestamp("11:10:00").time()
+
+        # Perform invalidation checks on all candles, regardless of the trading window
+        print(f"Current Close: {current_close}")
+        print(f"Bearish FVGs before filtering: {self.bearish_fvgs}")
+        print(f"Bullish FVGs before filtering: {self.bullish_fvgs}")
+
+        # Filter FVGs to include only those created on the same day
+        self.bullish_fvgs = [
+            fvg for fvg in self.bullish_fvgs
+            if fvg['Datetime'].date() == current_datetime.date() and
+            (fvg['Datetime'].time() >= start_time or current_close < fvg['First Candle High'])
+        ]
+
+        self.bearish_fvgs = [
+            fvg for fvg in self.bearish_fvgs
+            if fvg['Datetime'].date() == current_datetime.date() and
+            (fvg['Datetime'].time() >= start_time or current_close > fvg['First Candle Low'])
+        ]
+
+        print(f"Bearish FVGs after filtering: {self.bearish_fvgs}")
+        print(f"Bullish FVGs after filtering: {self.bullish_fvgs}")
+
+        # Ensure we're within the allowed trading window before placing trades
+        if start_time <= current_time <= end_time:
+            # Evaluate if position is flat
+            if not self.position:
+                print('POSITION IS FLAT, checking for signals')
+
+                # Place trades only within the trading window
+                for fvg in self.bearish_fvgs[:]:
+                    if current_close > fvg['First Candle Low']:
+                        self.buy(sl=long_sl_price, tp=long_tp_price)  # Buy at the next open
+                        print(f"Buy signal placed at {self.data.index[-1]} for FVG: {fvg}")
+                        self.bearish_fvgs.remove(fvg)  # Remove the FVG after using it
+                        break  # Buy once, no need to check further
+
+                for fvg in self.bullish_fvgs[:]:
+                    if current_close < fvg['First Candle High']:
+                        self.sell(sl=short_sl_price, tp=short_tp_price)  # Sell at the next open
+                        print(f"Sell signal placed at {self.data.index[-1]} for FVG: {fvg}")
+                        self.bullish_fvgs.remove(fvg)  # Remove the FVG after using it
+                        break  # Sell once, no need to check further
+
+
+THIS CODE IS CLOSE TO WORKING FOR STRATEGY, BUT IT DOESN'T ACCOUNT FOR INVALIDATING FVGS IF THEYRE ALREADY CLOSED ABOVE OR BELOW: 
+
+ if start_time <= current_time <= end_time:
+    # Evaluate if position is flat
+            if not self.position:
+                print('POSITION IS FLAT, checking for signals')
+
+                # Place trades only within the trading window
+                for fvg in self.bearish_fvgs[:]:
+                    if current_datetime >= fvg['Datetime'] and current_datetime.date() == fvg['Datetime'].date():  # Ensure FVG is formed before or at the current time
+                        if current_close > fvg['First Candle Low']:
+                            self.buy(sl=long_sl_price, tp=long_tp_price)  # Buy at the next open
+                            print(f"Buy signal placed at {self.data.index[-1]} for FVG: {fvg}")
+                            self.bearish_fvgs.remove(fvg)  # Remove the FVG after using it
+                            break  # Buy once, no need to check further
+
+                for fvg in self.bullish_fvgs[:]:
+                    if current_datetime >= fvg['Datetime'] and current_datetime.date() == fvg['Datetime'].date():  # Ensure FVG is formed before or at the current time
+                        if current_close < fvg['First Candle High']:
+                            self.sell(sl=short_sl_price, tp=short_tp_price)  # Sell at the next open
+                            print(f"Sell signal placed at {self.data.index[-1]} for FVG: {fvg}")
+                            self.bullish_fvgs.remove(fvg)  # Remove the FVG after using it
+                            break  # Sell once, no need to check further
+
+
+
+
+
+
+
+
+
+
+TRYNA DO THIS WAY: BC IT MAKES SENSE AND I WANT TO LEARN HOW TO DO IT, 
+THIS CODE GIVES ME THIS ERROR THO: TypeError: unhashable type: 'numpy.ndarray'
+PS C:\Users\Caden Baird\OneDrive\Desktop\Yfinance Data\yfinance_proj> 
+
+
+
+# Ensure we're within the allowed trading window before placing trades
+if start_time <= current_time <= end_time:
+    # Evaluate if position is flat
+    if not self.position:
+        print('POSITION IS FLAT, checking for signals')
+
+        # Place trades only within the trading window
+        for fvg in self.bearish_fvgs[:]:
+            if current_datetime >= fvg['Datetime'] and current_datetime.date() == fvg['Datetime'].date():  # Ensure FVG is formed before or at the current time
+                # Check for invalidation: FVG is invalid if any close is above the 'First Candle Low'
+                relevant_data = self.data[(self.data.index >= fvg['Datetime']) & (self.data.index <= current_datetime)]
+                invalidated = (relevant_data['Close'] > fvg['First Candle Low']).any()
+
+                if not invalidated and current_close > fvg['First Candle Low']:
+                    self.buy(sl=long_sl_price, tp=long_tp_price)  # Buy at the next open
+                    print(f"Buy signal placed at {self.data.index[-1]} for FVG: {fvg}")
+                    self.bearish_fvgs.remove(fvg)  # Remove the FVG after using it
+                    break  # Buy once, no need to check further
+
+        for fvg in self.bullish_fvgs[:]:
+            if current_datetime >= fvg['Datetime'] and current_datetime.date() == fvg['Datetime'].date():  # Ensure FVG is formed before or at the current time
+                # Check for invalidation: FVG is invalid if any close is below the 'First Candle High'
+                relevant_data = self.data[(self.data.index >= fvg['Datetime']) & (self.data.index <= current_datetime)]
+                invalidated = (relevant_data['Close'] < fvg['First Candle High']).any()
+
+                if not invalidated and current_close < fvg['First Candle High']:
+                    self.sell(sl=short_sl_price, tp=short_tp_price)  # Sell at the next open
+                    print(f"Sell signal placed at {self.data.index[-1]} for FVG: {fvg}")
+                    self.bullish_fvgs.remove(fvg)  # Remove the FVG after using it
+                    break  # Sell once, no need to check further
+
+
+NESTED INSIDE SHALLOW COPY FOR BEARISH 
+
+if current_datetime >= fvg['Datetime'] and current_datetime.date() == fvg['Datetime'].date():
+                        # Filter relevant data using Pandas slicing
+                        relevant_data = df.loc[fvg['Datetime']:current_datetime, 'Close']
+                        print('This is relevant data!!:')
+                        print(relevant_data)
+
+                        # Check if the FVG has not been invalidated and current price conditions are met
+                        if not (relevant_data > fvg['First Candle Low']).any() and current_close > fvg['First Candle Low']:
+                            self.buy(sl=long_sl_price, tp=long_tp_price)
+                            print(f"Buy signal placed at {self.data.index[-1]} for Bearish FVG: {fvg}")
+                            self.bearish_fvgs.remove(fvg)
+                            breakfvgs.remove(fvg)
+                            break
+
+
+NESTED INSIDE SHALLOW COPY FOR BULLISH:
+
+ if current_datetime >= fvg['Datetime'] and current_datetime.date() == fvg['Datetime'].date():
+                        # Filter relevant data using Pandas slicing
+                        relevant_data = df.loc[fvg['Datetime']:current_datetime, 'Close']
+
+                        # Check if the FVG has not been invalidated and current price conditions are met
+                        if not (relevant_data < fvg['First Candle High']).any() and current_close < fvg['First Candle High']:
+                            self.sell(sl=short_sl_price, tp=short_tp_price)
+                            print(f"Sell signal placed at {self.data.index[-1]} for Bullish FVG: {fvg}")
+                            self.bullish_fvgs.remove(fvg)
+                            break

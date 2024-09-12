@@ -1,0 +1,70 @@
+def get_intraday_data(ticker_symbol, start_date, end_date, start_time, end_time, lookback):
+    max_range_days = 59
+    end_date = pd.Timestamp.today()
+
+     # Ensure start_date and end_date are timezone-aware
+    if start_date.tzinfo is None:
+        start_date = start_date.tz_localize('America/New_York')
+    else:
+        start_date = start_date.tz_convert('America/New_York')
+
+    if end_date.tzinfo is None:
+        end_date = end_date.tz_localize('America/New_York')
+    else:
+        end_date = end_date.tz_convert('America/New_York')
+    
+    # Initialize an empty DataFrame to hold all the data
+    intraday_data = pd.DataFrame()
+
+    current_start_date = start_date
+    while current_start_date < end_date:
+        # Define the next chunk end date, ensuring it doesn't exceed the max range or the final end date
+        current_end_date = min(current_start_date + timedelta(days=max_range_days), end_date)
+
+        data_slice = yf.download(ticker_symbol, start=current_start_date, end=current_end_date, interval='5m')
+        data_slice = data_slice.drop(columns=['Adj Close'])
+
+        if data_slice.index.tzinfo is None:
+            data_slice.index = data_slice.index.tz_localize('America/New_York')
+    # intraday_data = yf.download(ticker_symbol, start=start_date, end=end_date, interval='5m')
+    # intraday_data = intraday_data.drop(columns=['Adj Close'])
+        else:
+            data_slice.index = data_slice.index.tz_convert('America/New_York')
+
+        data_slice = data_slice.between_time(start_time, end_time)
+
+        intraday_data = pd.concat([intraday_data, data_slice])
+    
+        end_date = start_date
+        start_date = start_date - pd.Timedelta(days=59)  # Move start_date back by 59 days or less
+
+        # if start_date < lookback:
+        #     break
+    # intraday_1m_data = intraday_1m_data = yf.download(ticker_symbol, start=start_date, end=end_date, interval='1m')
+    # intraday_data = intraday_1m_data.drop(columns=['Adj Close'])
+
+    # Ensure the DatetimeIndex is timezone-aware (localize if needed)
+    # if intraday_data.index.tzinfo is None:
+    #     intraday_data.index = intraday_data.index.tz_localize('America/New_York')
+        # intraday_1m_data.index = intraday_data.index.tz_localize('America/New_York')
+    # else:
+    #     intraday_data.index = intraday_data.index.tz_convert('America/New_York')
+        # intraday_1m_data.index = intraday_data.index.tz_convert('America/New_York')
+
+    # Filter the data between the specified times
+    # intraday_data = intraday_data.between_time(start_time, end_time)
+   
+    # If no data is available for selected time range, i.e. they choose a stock, and choose hours outside of market time (9:30 - 4:00)
+    if intraday_data.empty:
+        print(f'No intraday data available for {ticker_symbol} between {start_time} and {end_time} validate that {ticker_symbol} trades after market hours. ')
+        retry = input('Please select "yes" to select a different time range, or "no" to not receive intraday data. ')
+        if retry.lower() == 'yes': 
+            intraday_start_time, intraday_end_time = get_intraday_times()
+            get_intraday_data(ticker_symbol, start_date, end_date, intraday_start_time, intraday_end_time)
+        else: 
+            print('Exiting intraday data retrieval...')
+            intraday_data = None
+
+    # Update the end_date to move the window backward
+   
+    return intraday_data
