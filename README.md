@@ -40,21 +40,21 @@ First, clone this repository to your local machine:
 
 Install the required libraries by running in your terminal:
 
-Pandas:      "pip install pandas"
-Numpy:       "pip install numpy"
-YFinance:    "pip install yfinance"
-Matplotlib:  "pip install matplotlib"
-Backtesting: "pip install backtesting"
+- Pandas:      "pip install pandas"
+- Numpy:       "pip install numpy"
+- YFinance:    "pip install yfinance"
+- Matplotlib:  "pip install matplotlib"
+- Backtesting: "pip install backtesting"
 
 ## Project Structure
 
-├── backtest.py        # Contains the main backtesting logic (unfinished)
-├── calculations.py    # Helper functions for calculating averages, medians, and other metrics for daily and intraday data
-├── display_data.py    # Logic for displaying calculations both to the terminal and to create and display charts
-├── dynamic_tpsl.py    # Dynamically adjusts take-profit and stop-loss levels based on specific market conditions (unfinished)
-├── get_data.py        # Fetches historical daily and intraday data using yfinance API.
-├── graphs.py          # Handles plotting and graphing of data (uses Matplotlib)
-└── README.md          # Project documentation
+- backtest.py        # Contains the main backtesting logic (unfinished)
+- calculations.py    # Helper functions for calculating averages, medians, and other metrics for daily and intraday data
+- display_data.py    # Logic for displaying calculations both to the terminal and to create and display charts
+- dynamic_tpsl.py    # Dynamically adjusts take-profit and stop-loss levels based on specific market conditions (unfinished)
+- get_data.py        # Fetches historical daily and intraday data using yfinance API.
+- graphs.py          # Handles plotting and graphing of data (uses Matplotlib)
+- README.md          # Project documentation
 
 ## Trading Strategy
 
