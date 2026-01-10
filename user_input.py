@@ -1,13 +1,7 @@
-import pandas as pd
-import pandas_market_calendars as mcal
-import yfinance as yf 
+import yfinance as yf
 from datetime import datetime
-import matplotlib.pyplot as plt 
-import seaborn as sns
-import statistics
-import tkinter
 
-def  get_user_input():
+def get_user_input():
     while True:
         ticker_input = input('What ticker symbol would you like to grab data from? (e.g. if I would like Microsoft I would enter "MSFT") ').upper()
         try:
@@ -18,7 +12,6 @@ def  get_user_input():
             else:
                 break
         except Exception as e:
-            
             print(f'An error occured: {e}. Please try again.')
     while True:
         time_input = input('Would you like to look back in days, months, or years to calculate the average daily candle range? Type "D", "M" or "Y" ')
@@ -34,13 +27,11 @@ def  get_user_input():
         except ValueError:
             print('Lookback value must be an integer. Please try again.')
     while True:
-    #     # TODO: rename this maybe?
         intraday_choice = input('Would you like to receive intraday data for a chosen time period? (Max lookback for data is 59 days if you choose this.) Type "yes" or "no" ').strip().lower()
         if intraday_choice not in ['yes', 'no']:
             print(f'{intraday_choice} must be "yes" or "no"')
         else:
             return intraday_choice, ticker_input, time_input.upper(), lookback_input
-    # # TODO: if intraday_choice = yes return intradaystart and end time, if false, don't return it and don't run intraday data analysis
 
 def get_intraday_times():
     while True:
@@ -65,7 +56,6 @@ def get_intraday_times():
     
 def validate_time_format(time_str):
     try:
-        # Validate that the input is in 'HH:MM' format
         datetime.strptime(time_str, '%H:%M')
         return True
     except ValueError:
