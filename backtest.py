@@ -1,191 +1,288 @@
 from backtesting import Backtest, Strategy
 import pandas as pd
-import backtesting 
-# GPT suggested this to fix error
-from bokeh.models import DatetimeTickFormatter
-# from main import bullish_fvgs, bearish_fvgs
-# This library works by the indicator is used for the close, and if there's a buy it'll buy @ the next candle's open same w/ sell
-"""
-2. Check if Already in a Position
-To ensure that you don't enter a new position if you're already in one, you can use the self.position attribute, which holds information
- about the current position. This attribute allows you to check whether you are long, short, or flat (no position).
-
-self.position.size > 0: You're in a long position.
-self.position.size < 0: You're in a short position.
-self.position.size == 0: You're flat (no position).
-
-3. Close Positions
-To close an existing position, you can use the self.position.close() method. This will close the current position at the next open price.
-"""
+import backtesting
 
 class fiveMinFVG(Strategy):
     bullish_fvgs = []
     bearish_fvgs = []
 
-    # I might need to add bullish fvgs and bearish fvgs in this init function? Ask alec or research so u understand
     def init(self):
-        self.last_trade_date = None  # Initialize to store the date of the last trade
-
-        # Define the trading window (9:50 AM to 11:10 AM)
-        self.start_time = pd.Timestamp("09:50:00").time()
-        self.end_time = pd.Timestamp("10:20:00").time()
+        self.last_trade_date = None
+        self.invalidation_checked_date = None
+        self.entry_info = {}  # Store entry info for each trade
+        self.current_entry_info = None  # Store entry info for the current open position
         
-    # This next function goes through each candle in the df one by one and evaluates the criteria, and decides whether it 
-    # wants to buy or sell on the next candle.
-  
-    def next(self):
-        # TODO: READ DOCUMENTATION IF YOU'RE NOT FAMILIAR W A LIBRARY. e.g. the data is not a df, it's a customized structure. use ctrl click to understand
-        # more information about it:
-        """
-        Custom Data Structure: The data attribute is not a Pandas DataFrame but a custom structure that serves optimized NumPy arrays for performance reasons.
-        Access to Full Data: During the init phase, the data is available in its entirety. However, within the next method, you only have access to the data up
-        to the current point in the backtest.
-        Convenience Accessors: You can get Pandas Series (with .s) or the entire DataFrame (with .df) for the data if you need more advanced data manipulation.
-        """
-        # The bug im getting is not a tz issue current date time and fvgs time zone align. 
+        # Determine trading window from the full dataset (available in init)
+        df = self.data.df
+        if len(df) > 0:
+            times = pd.Series([idx.time() for idx in df.index])
+            self.start_time = times.min()
+            self.end_time = times.max()
+        else:
+            self.start_time = pd.Timestamp("09:30:00").time()
+            self.end_time = pd.Timestamp("16:00:00").time()
+        
+        # Copy FVGs from class variables to instance variables
+        self.bullish_fvgs = list(fiveMinFVG.bullish_fvgs) if fiveMinFVG.bullish_fvgs else []
+        self.bearish_fvgs = list(fiveMinFVG.bearish_fvgs) if fiveMinFVG.bearish_fvgs else []
+    
+    def on_trade_close(self, trade):
+        """Called when a trade is closed (TP, SL, or manual close)"""
+        exit_time = self.data.index[-1].time()
+        exit_price = self.data.Close[-1]
+        exit_date = self.data.index[-1].date()
+        pnl = trade.pl
+        is_winner = pnl > 0
+        
+        result = "WINNER" if is_winner else "LOSER"
+        
+        # Get entry info from current_entry_info if available
+        if self.current_entry_info:
+            entry_time_str = self.current_entry_info['entry_time']
+            entry_price_str = f"{self.current_entry_info['entry_price']:.2f}"
+        else:
+            entry_time_str = "N/A"
+            entry_price_str = "N/A"
+        
+        print(f"[TRADE CLOSED] {result} - Exit Time: {exit_time}, Exit Price: {exit_price:.2f}, Exit Date: {exit_date}")
+        print(f"  Entry Time: {entry_time_str}, Entry Price: {entry_price_str}")
+        print(f"  P&L: ${pnl:.2f}")
+        
+        # Clean up entry info
+        self.current_entry_info = None
+        
+    def next(self): 
 
         df = self.data.df
+        
+        if len(self.data) < 2:
+            return
             
-        current_time = self.data.index[-1].time()  # Get the time of the current candle
-        current_close = self.data.Close[-1]  # Current candle close price
-        current_datetime = self.data.index[-1]  # Ensure this is correct; adjusted as needed
+        current_time = self.data.index[-1].time()
+        current_close = self.data.Close[-1]
+        current_datetime = self.data.index[-1]
         current_open = self.data.Open[-1]
-        prev_close = self.data.Close[-2]
-        prev_open = self.data.Open[-2]
+        prev_close = self.data.Close[-2] if len(self.data) >= 2 else current_close
+        prev_open = self.data.Open[-2] if len(self.data) >= 2 else current_open
         current_date = current_datetime.date()
-
-        # Define TP and SL
-        long_tp_price = current_close + 40.00
-        long_sl_price = current_close - 20.00
-
-        short_tp_price = current_close - 40.00
-        short_sl_price = current_close + 20.00
         
+        # Check if this is the last candle in the dataset (exact match, not >=)
+        is_last_candle = current_datetime == df.index[-1]
 
-        if current_date != self.last_trade_date:
-           # Iterate through Bearish FVGs
-            for fvg in self.bearish_fvgs[:]:
-                if current_datetime >= fvg['Datetime'] and current_datetime.date() == fvg['Datetime'].date():
-                    # Filter relevant data from FVG creation time to current candle 
-                    relevant_data = df.loc[fvg['Datetime']:pd.Timestamp(f"{current_date} {self.start_time}").tz_localize('America/New_York'), 'Close']
-                    
-                    # Check if any closing price before 9:50 AM is above the first candle low
-                    invalidated = (relevant_data > fvg['First Candle Low']).any()
-                    
-                    if invalidated:
-                        print(f"Bearish FVG invalidated at {current_datetime} for FVG created at {fvg['Datetime']}")
-                        self.bearish_fvgs.remove(fvg)
-
-            # Iterate through Bullish FVGs
-            for fvg in self.bullish_fvgs[:]:
-                if current_datetime >= fvg['Datetime'] and current_datetime.date() == fvg['Datetime'].date():
-                    # Filter relevant data from FVG creation time to 9:50 AM
-                    relevant_data = df.loc[fvg['Datetime']:pd.Timestamp(f"{current_date} {self.start_time}").tz_localize('America/New_York'), 'Close']
-                    
-                    # Check if any closing price before 9:50 AM is below the first candle high
-                    invalidated = (relevant_data < fvg['First Candle High']).any()
+        if self.position is None and current_date != self.last_trade_date:
+            self.last_trade_date = None
+            self.current_entry_info = None  # Clear entry info when position closes
         
-                    if invalidated:
-                        print(f"Bullish FVG invalidated at {current_datetime} for FVG created at {fvg['Datetime']}")
-                        self.bullish_fvgs.remove(fvg)
+        # Close position at end of trading window OR at the very last candle of the dataset
+        if self.position and (current_time >= self.end_time or is_last_candle):
+            # Store exit info before closing
+            exit_time = current_time
+            exit_price = current_close
+            pnl = self.position.pl
+            is_winner = pnl > 0
+            result = "WINNER" if is_winner else "LOSER"
+            
+            # Get entry info if available
+            if self.current_entry_info:
+                entry_time_str = self.current_entry_info['entry_time']
+                entry_price_str = f"{self.current_entry_info['entry_price']:.2f}"
+            else:
+                entry_time_str = "N/A"
+                entry_price_str = "N/A"
+            
+            self.position.close()
+            close_reason = "END OF DAY" if current_time >= self.end_time and not is_last_candle else "END OF DATASET"
+            print(f"[{close_reason}] {result} - Closed position at {exit_time} on {current_date}")
+            print(f"  Entry Time: {entry_time_str}, Entry Price: {entry_price_str}")
+            print(f"  Exit Time: {exit_time}, Exit Price: {exit_price:.2f}")
+            print(f"  P&L: ${pnl:.2f}")
+            self.current_entry_info = None  # Clear after closing
+        
+        if self.start_time <= current_time <= self.end_time:
+            if current_date != self.invalidation_checked_date:
+                start_time_ts = pd.Timestamp(f"{current_date} {self.start_time}").tz_localize('America/New_York')
+                
+                for fvg in self.bearish_fvgs[:]:
+                    fvg_datetime = fvg['Datetime']
+                    if hasattr(fvg_datetime, 'tz_localize') or hasattr(fvg_datetime, 'tz_convert'):
+                        if fvg_datetime.tzinfo is None:
+                            fvg_datetime = fvg_datetime.tz_localize('America/New_York')
+                        elif fvg_datetime.tzinfo != start_time_ts.tzinfo:
+                            fvg_datetime = fvg_datetime.tz_convert('America/New_York')
+                    
+                    if fvg_datetime.date() == current_date and fvg_datetime < start_time_ts:
+                        try:
+                            relevant_data = df.loc[fvg_datetime:start_time_ts, 'Close']
+                            if len(relevant_data) > 0:
+                                invalidated = (relevant_data > fvg['First Candle Low']).any()
+                                if invalidated:
+                                    self.bearish_fvgs.remove(fvg)
+                        except Exception:
+                            continue
 
-            """
-            TODO: 
-            - we're placing sell orders on up close candles, and buy orders, on downclose candles if it's getting it's signal from a fvg before trading window I THINK THIS IS DONE
-            - two signals are being placed (buy and sell) on the same candle open. I THINK THIS IS DONE. 
-            - Ensure that two trades are not being placed at the same time. this is done
-            - Ensure there is a max num of trades per day. either one or two. THIS IS DONE
-            - The logic for invalidating candles is not fully correct yet. e.g. if candle closes above bearish fvg before trading window, sometimes it won't invalidate. 
-            - ^^^ This thing, in the if invalidated, we're comparing datetime, and candlestick highs and lows? we should be comparing the close... 
-            - Invalidating all fvgs even within trading window right now. 
-            - IF A CANDLE HITS TP AND SL IN SAME CANDLE, I BELIEVE IT ASSUMES YOU GOT STOPPED OUT. 
-        """ 
-            # Ensure we're within the allowed trading window before placing trades
-            if self.start_time <= current_time <= self.end_time:
-                if not self.position:
-                    # Check for a valid Bearish FVG trade signal
-                    for fvg in self.bearish_fvgs[:]:
-                        if current_datetime >= fvg['Datetime'] and current_datetime.date() == fvg['Datetime'].date():
-                            # Ensure relevant data is up to date
-                            relevant_data = df.loc[fvg['Datetime']:pd.Timestamp(f"{current_date} {self.start_time}").tz_localize('America/New_York'), 'Close']
-                            # print(f'This is relevant data: {relevant_data}')
-                            # Check the conditions separately for debugging
+                for fvg in self.bullish_fvgs[:]:
+                    fvg_datetime = fvg['Datetime']
+                    if hasattr(fvg_datetime, 'tz_localize') or hasattr(fvg_datetime, 'tz_convert'):
+                        if fvg_datetime.tzinfo is None:
+                            fvg_datetime = fvg_datetime.tz_localize('America/New_York')
+                        elif fvg_datetime.tzinfo != start_time_ts.tzinfo:
+                            fvg_datetime = fvg_datetime.tz_convert('America/New_York')
+                    
+                    if fvg_datetime.date() == current_date and fvg_datetime < start_time_ts:
+                        try:
+                            relevant_data = df.loc[fvg_datetime:start_time_ts, 'Close']
+                            if len(relevant_data) > 0:
+                                invalidated = (relevant_data < fvg['First Candle High']).any()
+                                if invalidated:
+                                    self.bullish_fvgs.remove(fvg)
+                        except Exception:
+                            continue
+                
+                self.invalidation_checked_date = current_date
 
-                            # if not (relevant_data.loc[fvg['Datetime']] > fvg['First Candle Low']).any():
-                            if not (relevant_data > fvg['First Candle Low']).any():
+            if not self.position:
+                for fvg in self.bearish_fvgs[:]:
+                    fvg_datetime = fvg['Datetime']
+                    if hasattr(fvg_datetime, 'tz_localize'):
+                        if fvg_datetime.tzinfo is None:
+                            fvg_datetime = fvg_datetime.tz_localize('America/New_York')
+                        if current_datetime.tzinfo is None:
+                            current_datetime = current_datetime.tz_localize('America/New_York')
+                        elif current_datetime.tzinfo != fvg_datetime.tzinfo:
+                            current_datetime = current_datetime.tz_convert('America/New_York')
+                            fvg_datetime = fvg_datetime.tz_convert('America/New_York')
+                    
+                    if current_datetime >= fvg_datetime and current_datetime.date() == fvg_datetime.date():
+                        try:
+                            start_time_ts = pd.Timestamp(f"{current_date} {self.start_time}").tz_localize('America/New_York')
+                            if fvg_datetime < start_time_ts:
+                                invalidated = False
+                            else:
+                                relevant_data = df.loc[fvg_datetime:current_datetime, 'Close']
+                                invalidated = (relevant_data > fvg['First Candle Low']).any() if len(relevant_data) > 0 else False
+                            
+                            if current_date != self.last_trade_date and not invalidated and current_close > fvg['First Candle Low'] and current_close > current_open:
+                                fvg_size = fvg.get('FVG Size', abs(fvg['Third Candle High'] - fvg['First Candle Low']))
                                 
-                                # print("Condition 1 passed: No close prices above First Candle Low")
-                                # print(f'Current datetime {current_datetime}, fvg first candle low {fvg['First Candle Low']}, Current Close; {current_close}')
-                                if current_close > fvg['First Candle Low'] and current_close > current_open:
-                                    # print("Condition 2 passed: Current close is above First Candle Low")
+                                min_tp_sl = max(0.50, current_close * 0.005)
+                                max_tp_sl = current_close * 0.10
+                                
+                                tp_distance = max(min_tp_sl, min(2 * fvg_size, max_tp_sl))
+                                sl_distance = max(min_tp_sl, min(1 * fvg_size, max_tp_sl))
+                                
+                                long_tp_price = current_close + tp_distance
+                                long_sl_price = current_close - sl_distance
+                                
+                                if long_tp_price > long_sl_price and long_tp_price > current_close:
+                                    # Store entry info BEFORE opening the position
+                                    self.current_entry_info = {
+                                        'entry_time': current_time,
+                                        'entry_price': current_close,
+                                        'entry_date': current_date,
+                                        'direction': 'BUY'
+                                    }
+                                    
                                     self.buy(sl=long_sl_price, tp=long_tp_price)
-                                    print(current_time)
-                                    print(f"Buy signal placed at {self.data.index[-1]} for Bearish FVG: {fvg}")
+                                    print(f"\n[BUY SIGNAL] Time: {current_time}, Price: {current_close:.2f}")
+                                    print(f"  Bearish FVG: Created at {fvg_datetime}, FVG Size: {fvg_size:.2f}")
+                                    print(f"  Entry: {current_close:.2f}, TP: {long_tp_price:.2f} (+{tp_distance:.2f}), SL: {long_sl_price:.2f} (-{sl_distance:.2f})")
+                                    
                                     self.bearish_fvgs.remove(fvg)
                                     self.last_trade_date = current_date
                                     break
                                 else:
-                                    pass
-                                    # print("Condition 2 failed: Current close is not above First Candle Low")
+                                    if len(self.data) <= 10:
+                                        print(f"[WARNING] Invalid TP/SL for BUY: TP={long_tp_price:.2f}, SL={long_sl_price:.2f}, Entry={current_close:.2f}")
+                        except Exception as e:
+                            print(f"Error evaluating bearish FVG for trade: {e}")
+                            continue
+
+                for fvg in self.bullish_fvgs[:]:
+                    fvg_datetime = fvg['Datetime']
+                    if hasattr(fvg_datetime, 'tz_localize'):
+                        if fvg_datetime.tzinfo is None:
+                            fvg_datetime = fvg_datetime.tz_localize('America/New_York')
+                        if current_datetime.tzinfo is None:
+                            current_datetime = current_datetime.tz_localize('America/New_York')
+                        elif current_datetime.tzinfo != fvg_datetime.tzinfo:
+                            current_datetime = current_datetime.tz_convert('America/New_York')
+                            fvg_datetime = fvg_datetime.tz_convert('America/New_York')
+                    
+                    if current_datetime >= fvg_datetime and current_datetime.date() == fvg_datetime.date():
+                        try:
+                            start_time_ts = pd.Timestamp(f"{current_date} {self.start_time}").tz_localize('America/New_York')
+                            if fvg_datetime < start_time_ts:
+                                invalidated = False
                             else:
-                                pass
-                                # print("Condition 1 failed: Some close prices are above First Candle Low")
-
-                    # Check for a valid Bullish FVG trade signal
-                    for fvg in self.bullish_fvgs[:]:
-                        if current_datetime >= fvg['Datetime'] and current_datetime.date() == fvg['Datetime'].date():
-                            # Ensure relevant data is up to date
-                            relevant_data = df.loc[fvg['Datetime']:pd.Timestamp(f"{current_date} {self.start_time}").tz_localize('America/New_York'), 'Close']
-
-                            # Check the conditions separately for debugging
-                            # Basically if the fvg is not invalidated is this first condition. 
-
-                            #if not (relevant_data.loc[fvg['Datetime']] < fvg['First Candle High']).any(): #.any is like any instance of?
-                            if not (relevant_data < fvg['First Candle High']).any():
-                                print('Evaluating if relevant data is > fvg first candle low ')
-                                # print("Condition 1 passed: No close prices below First Candle High")
-                                # Second condition that checks if bullish fvg is closed below triggers sell signal. 
-                                if current_close < fvg['First Candle High'] and current_close < current_open:
-                                    # print("Condition 2 passed: Current close is below First Candle High")
+                                relevant_data = df.loc[fvg_datetime:current_datetime, 'Close']
+                                invalidated = (relevant_data < fvg['First Candle High']).any() if len(relevant_data) > 0 else False
+                            
+                            if current_date != self.last_trade_date and not invalidated and current_close < fvg['First Candle High'] and current_close < current_open:
+                                fvg_size = fvg.get('FVG Size', abs(fvg['Third Candle Low'] - fvg['First Candle High']))
+                                
+                                min_tp_sl = max(0.50, current_close * 0.005)
+                                max_tp_sl = current_close * 0.10
+                                
+                                tp_distance = max(min_tp_sl, min(2 * fvg_size, max_tp_sl))
+                                sl_distance = max(min_tp_sl, min(1 * fvg_size, max_tp_sl))
+                                
+                                short_tp_price = current_close - tp_distance
+                                short_sl_price = current_close + sl_distance
+                                
+                                if short_tp_price < short_sl_price and short_tp_price < current_close:
+                                    # Store entry info BEFORE opening the position
+                                    self.current_entry_info = {
+                                        'entry_time': current_time,
+                                        'entry_price': current_close,
+                                        'entry_date': current_date,
+                                        'direction': 'SELL'
+                                    }
+                                    
                                     self.sell(sl=short_sl_price, tp=short_tp_price)
-                                    print(f"Sell signal placed at {self.data.index[-1]} for Bullish FVG: {fvg}")
+                                    print(f"\n[SELL SIGNAL] Time: {current_time}, Price: {current_close:.2f}")
+                                    print(f"  Bullish FVG: Created at {fvg_datetime}, FVG Size: {fvg_size:.2f}")
+                                    print(f"  Entry: {current_close:.2f}, TP: {short_tp_price:.2f} (-{tp_distance:.2f}), SL: {short_sl_price:.2f} (+{sl_distance:.2f})")
+                                    
                                     self.bullish_fvgs.remove(fvg)
                                     self.last_trade_date = current_date
                                     break
                                 else:
-                                    ...
-                                    # print("Condition 2 failed: Current close is not below First Candle High")
-                            else:
-                                ...
-                                # print("Condition 1 failed: Some close prices are below First Candle High")
+                                    if len(self.data) <= 10:
+                                        print(f"[WARNING] Invalid TP/SL for SELL: TP={short_tp_price:.2f}, SL={short_sl_price:.2f}, Entry={current_close:.2f}")
+                        except Exception as e:
+                            print(f"Error evaluating bullish FVG for trade: {e}")
+                            continue
 
 
-# Params = {} needs to be the format for additional parameters for backtest library
 def run_backtest(intraday_data, bullish_fvgs, bearish_fvgs):
-    print(f"Type of intraday_data: {type(intraday_data)}")
+    fiveMinFVG.bullish_fvgs = bullish_fvgs.copy() if bullish_fvgs else []
+    fiveMinFVG.bearish_fvgs = bearish_fvgs.copy() if bearish_fvgs else []
 
-    print("Preview of intraday_data:")
-    print(intraday_data.head())
-    
-    # Set the class parameters:
-    fiveMinFVG.bullish_fvgs = bullish_fvgs
-    fiveMinFVG.bearish_fvgs = bearish_fvgs
-    # print('This is the bullish fvgs in run backtest funciton')
-    # print(fiveMinFVG.bullish_fvgs)
-
-    # print('This is the bearish fvgs in run backtest funciton')
-    # print(fiveMinFVG.bearish_fvgs)
-
-    # TODO: Play around with param trade_on close, it's defaulted to false. You could put it to true in the future
-
-    bt = Backtest(intraday_data, fiveMinFVG, cash=100_000) #!! IMPORTANT CASH NEEDS OT BE 100,000 FOR MARGIN, OR YOU CAN SET MARGIN MANUALLY
-    stats = bt.run() # Idk if this is right, the datatype might have to be pd series. 
-
-
-    print(stats)
-
-    # bt.fig_ohlc.xaxis.formatter = DatetimeTickFormatter(days='%d %b')
-    # bt.plot()
-
-    # GPT recommended this to fix the error: 
+    bt = Backtest(intraday_data, fiveMinFVG, cash=100_000, finalize_trades=True)
+    stats = bt.run()
+    print(f"\n{'='*60}")
+    print("BACKTEST RESULTS")
+    print(f"{'='*60}")
+    print(f"Start:                     {stats['Start']}")
+    print(f"End:                       {stats['End']}")
+    print(f"Duration:                   {stats['Duration']}")
+    print(f"Exposure Time [%]:          {stats['Exposure Time [%]']:.2f}")
+    print(f"Equity Final [$]:           {stats['Equity Final [$]']:.2f}")
+    print(f"Equity Peak [$]:            {stats['Equity Peak [$]']:.2f}")
+    print(f"Return [%]:                 {stats['Return [%]']:.2f}")
+    print(f"Buy & Hold Return [%]:     {stats['Buy & Hold Return [%]']:.2f}")
+    print(f"Return (Ann.) [%]:          {stats['Return (Ann.) [%]']:.2f}")
+    print(f"Volatility (Ann.) [%]:     {stats['Volatility (Ann.) [%]']:.2f}")
+    print(f"CAGR [%]:                   {stats['CAGR [%]']:.2f}")
+    print(f"Sharpe Ratio:               {stats['Sharpe Ratio']:.2f}" if pd.notna(stats['Sharpe Ratio']) else "Sharpe Ratio:               NaN")
+    print(f"Sortino Ratio:              {stats['Sortino Ratio']:.2f}" if pd.notna(stats['Sortino Ratio']) else "Sortino Ratio:              NaN")
+    print(f"Calmar Ratio:               {stats['Calmar Ratio']:.2f}" if pd.notna(stats['Calmar Ratio']) else "Calmar Ratio:               NaN")
+    print(f"Max. Drawdown [%]:          {stats['Max. Drawdown [%]']:.2f}")
+    print(f"# Trades:                    {stats['# Trades']}")
+    print(f"Win Rate [%]:               {stats['Win Rate [%]']:.2f}" if pd.notna(stats['Win Rate [%]']) else "Win Rate [%]:               NaN")
+    print(f"Best Trade [%]:             {stats['Best Trade [%]']:.2f}" if pd.notna(stats['Best Trade [%]']) else "Best Trade [%]:             NaN")
+    print(f"Worst Trade [%]:            {stats['Worst Trade [%]']:.2f}" if pd.notna(stats['Worst Trade [%]']) else "Worst Trade [%]:            NaN")
+    print(f"Avg. Trade [%]:             {stats['Avg. Trade [%]']:.2f}" if pd.notna(stats['Avg. Trade [%]']) else "Avg. Trade [%]:             NaN")
+    print(f"Profit Factor:              {stats['Profit Factor']:.2f}" if pd.notna(stats['Profit Factor']) else "Profit Factor:              NaN")
+    print(f"{'='*60}\n")
    
