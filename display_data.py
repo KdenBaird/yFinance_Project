@@ -1,16 +1,4 @@
-import pandas as pd
-import pandas_market_calendars as mcal
-import yfinance as yf 
-from datetime import datetime
-import matplotlib.pyplot as plt 
-import seaborn as sns
-import statistics
-import tkinter
-import numpy as np
-from graphs import Graphs
-
-
-# NOTE: MEDIAN DATA WILL ONLY BE DIFFERENT THAN MEAN DATA IF THERE IS MORE THAN 2 VALUES TO EVALUATE, i.e. more than 2 weeks. 
+from graphs import Graphs, GraphNavigator
 
 DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
@@ -27,28 +15,31 @@ def display_median_data_text(ticker_symbol, time, lookback, intraday_start_time,
 
 
 def display_charts(avg_dr_by_day, time, lookback, ticker_symbol, avg_daily_range, avg_idr_by_day, intraday_data, intraday_start_time, intraday_end_time, median_dr, median_dr_by_day, median_idr_by_day):
+    navigator = GraphNavigator()
+    graphs = Graphs(ticker_symbol, time, lookback, intraday_start_time, intraday_end_time, navigator)
 
-   # TODO: you should be able to make a charts class, because there's a lot of repeated code, and it would make code more readable and show you know OOP.  
-    # Instantiate graphs class
-    graphs = Graphs(ticker_symbol, time, lookback, intraday_start_time, intraday_end_time)
-
-    # Single data graphs
     graphs.display_avg_dr(avg_dr_by_day)
     graphs.display_median_dr(median_dr_by_day)
-    graphs.display_avg_idr(avg_idr_by_day)
-    graphs.display_median_idr(median_idr_by_day)
+    
+    if intraday_data is not None and avg_idr_by_day is not None:
+        graphs.display_avg_idr(avg_idr_by_day)
+        if median_idr_by_day is not None:
+            graphs.display_median_idr(median_idr_by_day)
 
-    # Comparison graphs
-    graphs.display_avg_dr_and_avg_idr(avg_dr_by_day, avg_idr_by_day)
-    graphs.display_median_dr_and_median_idr(median_dr_by_day, median_idr_by_day)
+    if intraday_data is not None and avg_idr_by_day is not None:
+        graphs.display_avg_dr_and_avg_idr(avg_dr_by_day, avg_idr_by_day)
+        if median_idr_by_day is not None:
+            graphs.display_median_dr_and_median_idr(median_dr_by_day, median_idr_by_day)
+            graphs.display_avg_idr_and_median_idr(avg_idr_by_day, median_idr_by_day)
+    
     graphs.display_avg_dr_and_median_dr(avg_dr_by_day, median_dr_by_day)
-    graphs.display_avg_idr_and_median_idr(avg_idr_by_day, median_idr_by_day)
+    
+    print("\nGraph navigation: Use ← (left arrow) for previous, → (right arrow) for next, ESC to close all")
+    navigator.show_all()
 
 def display_daily_data(ticker_symbol, lookback, time, avg_dr, avg_dr_by_day):
-    
     print(f'\nThe average daily range of {ticker_symbol} from the past {time}{lookback} is: {avg_dr:.2f}')
     for day in DAYS_OF_WEEK:
-        # TODO: if user only selefcts a lookback period of a couple days, an error will come, because not all days of week is being selected. need to fix. 
         if day in avg_dr_by_day.index:
             print(f'The average daily range for {day} is {avg_dr_by_day[day]:.2f}')
         else:
@@ -71,10 +62,8 @@ def display_intraday_data(ticker_symbol, lookback, time, intraday_start_time, in
 
 
 def display_daily_median_data(ticker_symbol, time, lookback, median_dr, median_dr_by_day):
-    
     print(f'\nThe median daily range of {ticker_symbol} from the past {lookback}{time} is: {median_dr:.2f}')
     for day in DAYS_OF_WEEK:
-        # TODO: if user only selefcts a lookback period of a couple days, an error will come, because not all days of week is being selected. need to fix. 
         if day in median_dr_by_day.index:
             print(f'The median daily range for {day} is {median_dr_by_day[day]:.2f}')
         else:
